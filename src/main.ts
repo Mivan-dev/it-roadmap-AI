@@ -4,9 +4,9 @@ import { AppModule } from './app.module.js';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   
-  app.enableCors({
-    origin: '*',
-  });
+ app.enableCors({
+  origin: ['http://localhost:4200', 'https://it-roadmap-ai.netlify.app'],
+});
 
   await app.listen(process.env.PORT ?? 3000);
 }
