@@ -17,13 +17,16 @@ export class OpenRouterProvider {
 
     this.logger.log(`Generando roadmap para: ${params.language} - ${params.objective}`);
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 120000);
+
     try {
       const response = await fetch(`${this.baseUrl}/chat/completions`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
-          'HTTP-Referer': 'http://localhost:4200',
+          'HTTP-Referer': 'https://it-roadmap-ai.netlify.app',
           'X-Title': 'IT Roadmap AI',
         },
         body: JSON.stringify({
@@ -31,7 +34,10 @@ export class OpenRouterProvider {
           messages: [{ role: 'user', content: prompt }],
           plugins: [{ id: 'web' }],
         }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeout);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -43,22 +49,20 @@ export class OpenRouterProvider {
 
       this.logger.log('Texto recibido: ' + text);
 
-      // Limpieza del texto
       let cleaned = text.replace(/```json|```/g, '').trim();
 
-      // Extraer solo el JSON si hay texto extra antes o después
       const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         throw new Error('No se encontró JSON válido en la respuesta');
       }
       cleaned = jsonMatch[0];
 
-      // Corregir valores de icon sin comillas: icon: ti-xxx → icon: "ti-xxx"
       cleaned = cleaned.replace(/:\s*ti-([a-z0-9-]+)/g, ': "ti-$1"');
 
       return JSON.parse(cleaned) as RoadmapResponse;
 
     } catch (error) {
+      clearTimeout(timeout);
       this.logger.error('Error al llamar a OpenRouter:', error);
       throw new Error('Error generando el roadmap: ' + error);
     }
